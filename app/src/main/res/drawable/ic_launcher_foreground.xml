@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hantel auf dunkelblauem Grund -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M36,51h36v6h-36z" />
+    <path android:fillColor="#E53935" android:pathData="M30,38h7v32h-7z" />
+    <path android:fillColor="#1E5BC6" android:pathData="M71,38h7v32h-7z" />
+    <path android:fillColor="#2E9E44" android:pathData="M24,45h6v18h-6z" />
+    <path android:fillColor="#F59E0B" android:pathData="M78,45h6v18h-6z" />
+</vector>
