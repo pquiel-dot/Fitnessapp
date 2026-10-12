@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pigeon Hip Extension: Aus der Taube das hintere Knie mit Gesäßspannung vom Boden heben -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="160dp"
+    android:viewportWidth="240"
+    android:viewportHeight="160">
+    <path
+        android:pathData="M16,148 L224,148"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.1" />
+    <path
+        android:pathData="M108,120 L78,142 L48,140"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.2" />
+    <path
+        android:pathData="M48,140 L44,145"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.2" />
+    <path
+        android:pathData="M144,98 L150,122 L150,145"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.5" />
+    <path
+        android:pathData="M110,120 L140,142 L114,145"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M108,120 L78,128 L48,143"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M108,120 L146,94"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M146,96 L154,120 L158,145"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M151,82 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z"
+        android:fillColor="#0B2A4A" />
+    <path
+        android:pathData="M70,144 L69.5,142.5 L69.1,141 L68.8,139.5 L68.5,138.1 L68.3,136.6 L68.1,135.1 L68,133.7 L68,132.2 L68,130.8 L68.1,129.3 L68.3,127.9 L68.5,126.5 L68.8,125.1 L69.1,123.7 L69.5,122.3 L70,120.9 L70.5,119.5 L71.1,118.1 L71.8,116.8 L72.5,115.4 L73.3,114 L74.1,112.7 L75,111.3 L76,110"
+        android:strokeColor="#6D28D9"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M76,118.5 L76,110 L68,112.9"
+        android:strokeColor="#6D28D9"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

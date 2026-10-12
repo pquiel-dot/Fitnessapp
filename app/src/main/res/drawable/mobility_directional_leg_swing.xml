@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Directional Leg Swing: An einer Stütze das Bein seitlich, diagonal und vor-zurück schwingen -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="160dp"
+    android:viewportWidth="240"
+    android:viewportHeight="160">
+    <path
+        android:pathData="M16,148 L224,148"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.1" />
+    <path
+        android:pathData="M176,40 L176,148"
+        android:strokeColor="#94A3B8"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M114,82 L124,110 L138,136"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.2" />
+    <path
+        android:pathData="M114,82 L112,113 L110,143"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.2" />
+    <path
+        android:pathData="M126,82 L127,114 L128,145"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M114,82 L94,106 L76,130"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M120,42 L120,80"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M108,46 L104,66 L102,86"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M132,46 L152,58 L174,60"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M111,28 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z"
+        android:fillColor="#0B2A4A" />
+    <path
+        android:pathData="M108,45 L132,45"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M68,140 L70.7,142.2 L73.4,144.3 L76.2,146.1 L79.1,147.8 L81.9,149.2 L84.9,150.5 L87.9,151.6 L90.9,152.4 L94,153.1 L97.1,153.6 L100.3,153.9 L103.5,154 L106.8,153.9 L110.1,153.6 L113.5,153.1 L116.9,152.4 L120.4,151.6 L123.9,150.5 L127.4,149.2 L131.1,147.8 L134.7,146.1 L138.4,144.3 L142.2,142.2 L146,140"
+        android:strokeColor="#DB2777"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M142.3,147.7 L146,140 L137.5,139.2"
+        android:strokeColor="#DB2777"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M76.5,140.5 L68,140 L70.5,148.2"
+        android:strokeColor="#DB2777"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

@@ -326,12 +326,14 @@ private fun RoundDots(exercises: List<Exercise>, current: Int) {
 
 @Composable
 private fun TipsCard(segment: Segment, timeline: Timeline, index: Int, accent: Color) {
-    val tips = when (segment) {
-        is Work -> segment.exercise.tips
-        is Prepare -> timeline.nextWork(index + 1)?.exercise?.tips.orEmpty()
-        is Rest -> listOf("Ruhig und tief atmen", "Einen Schluck Wasser trinken", "Locker ausschütteln")
-        is Change -> segment.next.exercise.tips
+    val exercise = when (segment) {
+        is Work -> segment.exercise
+        is Prepare -> timeline.nextWork(index + 1)?.exercise
+        is Rest -> null
+        is Change -> segment.next.exercise
     }
+    val tips = exercise?.tips
+        ?: if (segment is Rest) listOf("Ruhig und tief atmen", "Einen Schluck Wasser trinken", "Locker ausschütteln") else emptyList()
     if (tips.isEmpty()) return
     Column(
         Modifier
@@ -340,6 +342,7 @@ private fun TipsCard(segment: Segment, timeline: Timeline, index: Int, accent: C
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        exercise?.let { ExerciseIllustration(it, Modifier.align(Alignment.CenterHorizontally)) }
         tips.forEach { tip ->
             Row {
                 Text("✓  ", color = accent, fontWeight = FontWeight.Bold)

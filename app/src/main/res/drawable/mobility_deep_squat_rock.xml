@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deep Squat Rock: Tiefe Hocke, Gewicht über Füße, Ballen und Fersen kreisen lassen -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="160dp"
+    android:viewportWidth="240"
+    android:viewportHeight="160">
+    <path
+        android:pathData="M16,148 L224,148"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.1" />
+    <path
+        android:pathData="M116,84 L138,96 L162,96"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.5" />
+    <path
+        android:pathData="M106,126 L134,116 L116,143"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.5" />
+    <path
+        android:pathData="M110,124 L140,112 L124,143"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M108,124 L118,80"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M118,84 L142,92 L166,90"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M115,66 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z"
+        android:fillColor="#0B2A4A" />
+    <path
+        android:pathData="M118,145 L136,145"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M110,145 L126,145"
+        android:strokeColor="#0B2A4A"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.5" />
+    <path
+        android:pathData="M161.2,124.9 L162.7,125.9 L163.6,126.9 L164,127.9 L163.8,128.9 L162.9,129.9 L161.6,130.9 L159.6,131.8 L157.2,132.7 L154.2,133.6 L150.8,134.3 L146.9,135 L142.7,135.6 L138.2,136.1 L133.4,136.5 L128.4,136.8 L123.3,136.9 L118.2,137 L113,136.9 L107.9,136.8 L102.9,136.5 L98.1,136.1 L93.6,135.6 L89.3,135 L85.5,134.4 L82,133.6 L79,132.8 L76.5,131.9 L74.5,131 L73.1,130 L72.3,129 L72,128 L72.3,127 L73.2,126 L74.7,125 L76.7,124 L79.2,123.2 L82.2,122.3 L85.7,121.6 L89.6,120.9 L93.9,120.3 L98.4,119.9 L103.2,119.5 L108.2,119.2 L113.3,119 L118.5,119 L123.7,119.1 L128.8,119.3 L133.7,119.5"
+        android:strokeColor="#0F9F8F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M126.5,124.1 L133.7,119.5 L127,114.3"
+        android:strokeColor="#0F9F8F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
