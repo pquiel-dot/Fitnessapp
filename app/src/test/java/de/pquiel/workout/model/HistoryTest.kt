@@ -75,7 +75,24 @@ class HistoryTest {
         assertEquals(3, summary.workouts)
         assertEquals(1_300_000L, summary.trainedMs)
         assertEquals(24, summary.completedExercises)
-        assertEquals(mapOf(1 to 8, 2 to 6, 3 to 5, 4 to 5), summary.exerciseCounts)
+        assertEquals(mapOf(Program.STRENGTH to mapOf(1 to 8, 2 to 6, 3 to 5, 4 to 5)), summary.exerciseCounts)
+    }
+
+    @Test
+    fun programIsStoredAndOldLinesAreStrength() {
+        val mobility = full.copy(program = Program.MOBILITY, exerciseCounts = mapOf(1 to 1, 2 to 1), plannedExercises = 6)
+        assertEquals(mobility, WorkoutRecord.decode(mobility.encode()))
+        assertEquals(full, WorkoutRecord.decode("1000000;1610000;600000;12;1:3,2:3,3:3,4:3"))
+        assertNull(WorkoutRecord.decode("1;2;3;6;1:1;UNBEKANNT"))
+    }
+
+    @Test
+    fun summaryKeepsProgramsApart() {
+        val mobility = latest.copy(program = Program.MOBILITY, exerciseCounts = mapOf(1 to 1, 3 to 1), plannedExercises = 6)
+        val summary = HistorySummary.of(listOf(full, mobility))
+        assertEquals(mapOf(1 to 3, 2 to 3, 3 to 3, 4 to 3), summary.exerciseCounts[Program.STRENGTH])
+        assertEquals(mapOf(1 to 1, 3 to 1), summary.exerciseCounts[Program.MOBILITY])
+        assertEquals(14, summary.completedExercises)
     }
 
     @Test

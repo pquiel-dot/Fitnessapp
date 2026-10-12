@@ -1,7 +1,7 @@
 package de.pquiel.workout.model
 
 /**
- * Ein abgeschlossenes Training.
+ * Ein abgeschlossenes Training des Programms [program].
  *
  * Zeitpunkte sind Epoch-Millisekunden (Wanduhr). [trainedMs] ist die tatsächlich trainierte Zeit
  * ohne Vorbereitungs-Countdown und ohne Pausen über den Pause-Knopf.
@@ -14,23 +14,28 @@ data class WorkoutRecord(
     val trainedMs: Long,
     val exerciseCounts: Map<Int, Int>,
     val plannedExercises: Int,
+    val program: Program = Program.STRENGTH,
 ) {
     val completedExercises: Int get() = exerciseCounts.values.sum()
 
     /** Eindeutiger Schlüssel, z. B. zum Löschen. */
     val id: Long get() = finishedAt
 
-    /** Eine Zeile im Speicherformat: `startedAt;finishedAt;trainedMs;planned;nr:anzahl,nr:anzahl`. */
+    /** Eine Zeile im Speicherformat: `startedAt;finishedAt;trainedMs;planned;nr:anzahl,nr:anzahl;PROGRAMM`. */
     fun encode(): String {
         val counts = exerciseCounts.toSortedMap().entries.joinToString(",") { "${it.key}:${it.value}" }
-        return "$startedAt;$finishedAt;$trainedMs;$plannedExercises;$counts"
+        return "$startedAt;$finishedAt;$trainedMs;$plannedExercises;$counts;${program.name}"
     }
 
     companion object {
-        /** Liest eine Zeile aus [encode]; ungültige Zeilen ergeben null. */
+        /**
+         * Liest eine Zeile aus [encode]; ungültige Zeilen ergeben null.
+         * Ältere Zeilen ohne Programm (5 Felder) gehören zum Workoutplan.
+         */
         fun decode(line: String): WorkoutRecord? {
             val parts = line.trim().split(";")
-            if (parts.size != 5) return null
+            if (parts.size != 5 && parts.size != 6) return null
+            val program = if (parts.size == 6) Program.fromName(parts[5]) ?: return null else Program.STRENGTH
             val counts = if (parts[4].isEmpty()) emptyMap() else parts[4].split(",").associate { pair ->
                 val (nr, count) = pair.split(":").takeIf { it.size == 2 } ?: return null
                 (nr.toIntOrNull() ?: return null) to (count.toIntOrNull() ?: return null)
@@ -41,6 +46,7 @@ data class WorkoutRecord(
                 trainedMs = parts[2].toLongOrNull() ?: return null,
                 plannedExercises = parts[3].toIntOrNull() ?: return null,
                 exerciseCounts = counts,
+                program = program,
             )
         }
 
@@ -75,12 +81,16 @@ data class HistorySummary(
     val workouts: Int,
     val trainedMs: Long,
     val completedExercises: Int,
-    val exerciseCounts: Map<Int, Int>,
+    /** Je Programm: wie oft jede Übungsnummer absolviert wurde. Nur Programme mit Trainings sind enthalten. */
+    val exerciseCounts: Map<Program, Map<Int, Int>>,
 ) {
     companion object {
         fun of(records: List<WorkoutRecord>): HistorySummary {
-            val counts = mutableMapOf<Int, Int>()
-            records.forEach { r -> r.exerciseCounts.forEach { (nr, c) -> counts[nr] = (counts[nr] ?: 0) + c } }
+            val counts = mutableMapOf<Program, MutableMap<Int, Int>>()
+            records.forEach { r ->
+                val map = counts.getOrPut(r.program) { mutableMapOf() }
+                r.exerciseCounts.forEach { (nr, c) -> map[nr] = (map[nr] ?: 0) + c }
+            }
             return HistorySummary(
                 workouts = records.size,
                 trainedMs = records.sumOf { it.trainedMs },

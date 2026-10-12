@@ -8,16 +8,27 @@ sealed interface Segment {
 /** Kurzer Countdown vor dem ersten Durchgang. Zählt nicht zur Trainingsdauer. */
 data class Prepare(override val durationMs: Long) : Segment
 
-/** Eine Übung. [round] und [indexInRound] beginnen bei 0. */
+/**
+ * Eine Übung bzw. ein Abschnitt davon. [round], [indexInRound] und [part] beginnen bei 0;
+ * [part] zählt die Abschnitte einer Übung mit mehreren Seiten (siehe [Exercise.parts]).
+ */
 data class Work(
     val round: Int,
     val indexInRound: Int,
     val exercise: Exercise,
     override val durationMs: Long,
-) : Segment
+    val part: Int = 0,
+) : Segment {
+    val side: String? get() = exercise.parts.getOrNull(part)?.side
+    val partCount: Int get() = exercise.parts.size.coerceAtLeast(1)
+    val isLastPart: Boolean get() = part == partCount - 1
+}
 
 /** Pause nach dem Durchgang [afterRound] (beginnt bei 0). */
 data class Rest(val afterRound: Int, override val durationMs: Long) : Segment
+
+/** Kurze Wechselzeit, um sich für [next] (nächste Übung oder andere Seite) zu positionieren. */
+data class Change(val next: Work, override val durationMs: Long) : Segment
 
 /** Position im Ablauf zu einem bestimmten Zeitpunkt. */
 data class Position(
@@ -81,6 +92,25 @@ class Timeline(val segments: List<Segment>) {
     fun nextWork(fromIndex: Int): Work? =
         segments.drop(fromIndex.coerceAtLeast(0)).firstOrNull { it is Work } as Work?
 
+    // Indizes der Abschnitte jeder Übung je Durchgang (eine Übung kann aus mehreren Seiten bestehen).
+    private val exerciseGroups: List<List<Int>> =
+        segments.indices.filter { segments[it] is Work }
+            .groupBy { (segments[it] as Work).let { w -> w.round to w.indexInRound } }
+            .values.toList()
+
+    /** Anzahl der geplanten Übungen über alle Durchgänge. */
+    val plannedExercises: Int get() = exerciseGroups.size
+
+    /**
+     * Ordnet jeder Übungsnummer zu, wie oft sie vollständig absolviert wurde, wenn die Abschnitte mit den
+     * Indizes [completedSegments] absolviert sind. Eine Übung zählt nur, wenn alle ihre Seiten absolviert sind.
+     */
+    fun completedExercises(completedSegments: Set<Int>): Map<Int, Int> =
+        exerciseGroups.filter { group -> group.all { it in completedSegments } }
+            .map { (segments[it.first()] as Work).exercise.number }
+            .groupingBy { it }
+            .eachCount()
+
     companion object {
         fun standard(
             exercises: List<Exercise> = WorkoutPlan.exercises,
@@ -94,6 +124,29 @@ class Timeline(val segments: List<Segment>) {
             for (round in 0 until rounds) {
                 exercises.forEachIndexed { i, ex -> list += Work(round, i, ex, exerciseSeconds * 1000L) }
                 if (round < rounds - 1 && restSeconds > 0) list += Rest(round, restSeconds * 1000L)
+            }
+            return Timeline(list)
+        }
+
+        /**
+         * Alle Übungen nacheinander, jede mit ihren [Exercise.parts]. Vor jeder neuen Übung liegt eine
+         * Wechselzeit von [changeSeconds], vor jeder weiteren Seite eine von [sideChangeSeconds].
+         */
+        fun sequence(
+            exercises: List<Exercise>,
+            prepareSeconds: Int,
+            changeSeconds: Int,
+            sideChangeSeconds: Int,
+        ): Timeline {
+            val list = mutableListOf<Segment>()
+            if (prepareSeconds > 0) list += Prepare(prepareSeconds * 1000L)
+            exercises.forEachIndexed { i, ex ->
+                ex.parts.forEachIndexed { p, part ->
+                    val work = Work(0, i, ex, part.seconds * 1000L, part = p)
+                    val change = if (p == 0) changeSeconds else sideChangeSeconds
+                    if (list.lastOrNull() is Work && change > 0) list += Change(work, change * 1000L)
+                    list += work
+                }
             }
             return Timeline(list)
         }

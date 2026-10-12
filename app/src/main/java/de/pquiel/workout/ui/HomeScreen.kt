@@ -41,17 +41,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.pquiel.workout.Settings
+import de.pquiel.workout.model.Change
 import de.pquiel.workout.model.Exercise
+import de.pquiel.workout.model.Program
+import de.pquiel.workout.model.Rest
+import de.pquiel.workout.model.Work
 import de.pquiel.workout.model.WorkoutPlan
 import de.pquiel.workout.model.formatClock
 
 @Composable
 fun HomeScreen(
+    program: Program,
+    onSelectProgram: (Program) -> Unit,
     settings: Settings,
     workoutMs: Long,
     completedWorkouts: Int,
@@ -87,26 +96,23 @@ fun HomeScreen(
                 .padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Header(completedWorkouts, onHistory) }
+            item { Header(program, onSelectProgram, completedWorkouts, onHistory) }
             item {
                 SectionCard {
-                    Bullet("Jede Übung ${WorkoutPlan.EXERCISE_SECONDS} Sekunden")
-                    Bullet("Nach allen ${WorkoutPlan.exercises.size} Übungen ${WorkoutPlan.REST_SECONDS} Sekunden Pause")
-                    Bullet("Insgesamt ${WorkoutPlan.ROUNDS} Durchgänge")
-                    Bullet("Saubere Technik hat immer Vorrang vor Tempo")
+                    program.intro.forEach { Bullet(it) }
                 }
             }
             item {
                 Text(
-                    "ÜBUNGEN PRO DURCHGANG",
+                    program.exercisesHeading,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = Navy,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                 )
             }
-            items(WorkoutPlan.exercises) { ExerciseCard(it) }
-            item { ScheduleCard(workoutMs) }
+            items(program.exercises, key = { "${program.name}-${it.number}" }) { ExerciseCard(it) }
+            item { ScheduleCard(program, workoutMs) }
             item {
                 SectionCard {
                     Text("Signale", fontWeight = FontWeight.Bold, color = Navy)
@@ -121,19 +127,68 @@ fun HomeScreen(
 }
 
 @Composable
-private fun Header(completedWorkouts: Int, onHistory: () -> Unit) {
-    Row(
-        modifier = Modifier
+private fun Header(
+    program: Program,
+    onSelectProgram: (Program) -> Unit,
+    completedWorkouts: Int,
+    onHistory: () -> Unit,
+) {
+    Column(
+        Modifier
             .fillMaxWidth()
             .background(Navy)
             .statusBarsPadding()
-            .padding(start = 20.dp, end = 8.dp, top = 24.dp, bottom = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 20.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text("WORKOUTPLAN", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+        ProgramTabs(program, onSelectProgram)
+        Spacer(Modifier.height(20.dp))
+        HeaderTitle(program, completedWorkouts, onHistory)
+    }
+}
+
+/** Auswahl des Programms, z. B. Workoutplan oder Running-Mobilisation. */
+@Composable
+private fun ProgramTabs(selected: Program, onSelect: (Program) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(end = 12.dp)
+            .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
+            .padding(4.dp),
+    ) {
+        Program.entries.forEach { p ->
+            val isSelected = p == selected
             Text(
-                "${WorkoutPlan.ROUNDS} DURCHGÄNGE · CA. 10 MINUTEN",
+                p.label,
+                color = if (isSelected) Navy else Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (isSelected) Color.White else Color.Transparent)
+                    .clickable { onSelect(p) }
+                    .padding(vertical = 10.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeaderTitle(program: Program, completedWorkouts: Int, onHistory: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                program.title,
+                color = Color.White,
+                fontSize = if (program.title.length > 12) 26.sp else 34.sp,
+                lineHeight = 32.sp,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                program.subtitle,
                 color = Color.White.copy(alpha = 0.85f),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -194,7 +249,7 @@ private fun ExerciseCard(exercise: Exercise) {
                     Text(exercise.name.uppercase(), fontWeight = FontWeight.Black, color = Navy)
                     Text(exercise.germanName, style = MaterialTheme.typography.bodyMedium)
                 }
-                Text("${WorkoutPlan.EXERCISE_SECONDS} s", fontWeight = FontWeight.Bold, color = exercise.color)
+                Text(exercise.durationLabel(), fontWeight = FontWeight.Bold, color = exercise.color)
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     contentDescription = if (expanded) "Tipps ausblenden" else "Tipps anzeigen",
@@ -203,6 +258,13 @@ private fun ExerciseCard(exercise: Exercise) {
             }
             AnimatedVisibility(expanded) {
                 Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    exercise.purpose?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = Navy)
+                    }
+                    exercise.target?.let { Text(it, fontWeight = FontWeight.Bold, color = exercise.color) }
+                    exercise.parts.mapNotNull { it.side }.takeIf { it.isNotEmpty() }?.let { sides ->
+                        Text("Seiten: ${sides.joinToString(" · ")}", style = MaterialTheme.typography.bodySmall)
+                    }
                     exercise.tips.forEach { tip ->
                         Row {
                             Text("✓  ", color = exercise.color, fontWeight = FontWeight.Bold)
@@ -215,16 +277,34 @@ private fun ExerciseCard(exercise: Exercise) {
     }
 }
 
+/** Dauer einer Übung für die Übersicht, z. B. „45 s“ oder „2 × 60 s“. */
+private fun Exercise.durationLabel(): String {
+    if (parts.isEmpty()) return "${WorkoutPlan.EXERCISE_SECONDS} s"
+    val seconds = parts.map { it.seconds }.distinct()
+    return if (parts.size > 1 && seconds.size == 1) "${parts.size} × ${seconds.single()} s" else "${parts.sumOf { it.seconds }} s"
+}
+
 @Composable
-private fun ScheduleCard(workoutMs: Long) {
+private fun ScheduleCard(program: Program, workoutMs: Long) {
     SectionCard {
         Text("ZEITPLAN IM ÜBERBLICK", fontWeight = FontWeight.Black, color = Navy)
-        val roundMs = WorkoutPlan.exercises.size * WorkoutPlan.EXERCISE_SECONDS * 1000L
-        for (round in 1..WorkoutPlan.ROUNDS) {
-            ScheduleRow("Durchgang $round (${WorkoutPlan.exercises.size} Übungen)", formatClock(roundMs) + " min")
-            if (round < WorkoutPlan.ROUNDS) {
-                ScheduleRow("Pause", formatClock(WorkoutPlan.REST_SECONDS * 1000L) + " min", RestGreen)
+        val segments = program.timeline.segments
+        if (program.rounds > 1) {
+            for (round in 0 until program.rounds) {
+                val roundMs = segments.filterIsInstance<Work>().filter { it.round == round }.sumOf { it.durationMs }
+                ScheduleRow("Durchgang ${round + 1} (${program.exercises.size} Übungen)", formatClock(roundMs) + " min")
+                segments.filterIsInstance<Rest>().firstOrNull { it.afterRound == round }?.let {
+                    ScheduleRow("Pause", formatClock(it.durationMs) + " min", RestGreen)
+                }
             }
+        } else {
+            val works = segments.filterIsInstance<Work>()
+            program.exercises.forEach { ex ->
+                val ms = works.filter { it.exercise == ex }.sumOf { it.durationMs }
+                ScheduleRow("${ex.number}. ${ex.name}", formatClock(ms) + " min")
+            }
+            val changeMs = segments.filterIsInstance<Change>().sumOf { it.durationMs }
+            if (changeMs > 0) ScheduleRow("Wechselzeiten", formatClock(changeMs) + " min", RestGreen)
         }
         HorizontalDivider(Modifier.padding(vertical = 4.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
