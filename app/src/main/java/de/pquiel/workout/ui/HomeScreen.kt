@@ -258,6 +258,7 @@ private fun ExerciseCard(exercise: Exercise) {
             }
             AnimatedVisibility(expanded) {
                 Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ExerciseIllustration(exercise, Modifier.align(Alignment.CenterHorizontally))
                     exercise.purpose?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = Navy)
                     }

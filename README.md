@@ -30,7 +30,7 @@ lockeren Lauf. Benötigt ein Widerstandsband und eine Stütze.
 
 Zwischen den Übungen bleiben 15 Sekunden zum Umpositionieren, beim Seitenwechsel 10 Sekunden.
 Gesamtdauer **12:05 Minuten** (plus 10 Sekunden „Mach dich bereit“). Die App zeigt für jede
-Übung Zweck, Wiederholungsziel, aktuelle Seite und die Schritt-für-Schritt-Anleitung und sagt
+Übung eine Illustration, Zweck, Wiederholungsziel, aktuelle Seite und die Schritt-für-Schritt-Anleitung und sagt
 Wechsel und Seiten an. Eine Übung zählt im Verlauf als absolviert, wenn alle ihre Seiten
 vollständig durchlaufen wurden.
 
