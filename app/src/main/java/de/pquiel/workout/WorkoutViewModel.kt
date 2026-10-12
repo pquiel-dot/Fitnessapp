@@ -6,13 +6,14 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.pquiel.workout.audio.Cues
+import de.pquiel.workout.model.Change
 import de.pquiel.workout.model.Position
 import de.pquiel.workout.model.Prepare
+import de.pquiel.workout.model.Program
 import de.pquiel.workout.model.Rest
 import de.pquiel.workout.model.Segment
 import de.pquiel.workout.model.Timeline
 import de.pquiel.workout.model.Work
-import de.pquiel.workout.model.WorkoutPlan
 import de.pquiel.workout.model.WorkoutRecord
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,6 +33,8 @@ data class Settings(
 )
 
 data class WorkoutState(
+    /** Das ausgewählte bzw. laufende Programm. */
+    val program: Program,
     val status: Status,
     val position: Position,
     val elapsedMs: Long,
@@ -41,10 +44,9 @@ data class WorkoutState(
 )
 
 class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
-    val timeline: Timeline = Timeline.standard()
-
     private val cues = Cues(app)
     private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val initialProgram = Program.fromName(prefs.getString(KEY_PROGRAM, null)) ?: Program.STRENGTH
     private val historyStore = HistoryStore(app.filesDir)
 
     private val _history = MutableStateFlow(historyStore.load())
@@ -52,8 +54,9 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow(
         WorkoutState(
+            program = initialProgram,
             status = Status.IDLE,
-            position = timeline.positionAt(0),
+            position = initialProgram.timeline.positionAt(0),
             elapsedMs = 0,
             settings = Settings(
                 sound = prefs.getBoolean(KEY_SOUND, true),
@@ -63,6 +66,9 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         )
     )
     val state: StateFlow<WorkoutState> = _state.asStateFlow()
+
+    /** Ablauf des ausgewählten Programms; das Programm wechselt nur, solange kein Training läuft. */
+    val timeline: Timeline get() = _state.value.program.timeline
 
     // Zeitmessung über die monotone Systemuhr, damit der Timer nicht driftet.
     private var accumulatedMs = 0L
@@ -141,6 +147,12 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         _state.update {
             it.copy(status = Status.IDLE, position = timeline.positionAt(0), elapsedMs = 0, lastRecord = null)
         }
+    }
+
+    fun selectProgram(program: Program) {
+        if (_state.value.status != Status.IDLE) return
+        prefs.edit().putString(KEY_PROGRAM, program.name).apply()
+        _state.update { it.copy(program = program, position = program.timeline.positionAt(0), elapsedMs = 0) }
     }
 
     fun deleteRecord(record: WorkoutRecord) {
@@ -227,13 +239,35 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
                 "Mach dich bereit. Los geht's mit ${first?.exercise?.spokenName ?: "der ersten Übung"}."
             }
             is Work -> {
-                val prefix = if (segment.indexInRound == 0) "Durchgang ${segment.round + 1}. " else ""
-                "$prefix${segment.exercise.spokenName}. ${WorkoutPlan.EXERCISE_SECONDS} Sekunden."
+                val goal = segment.exercise.target?.takeIf { segment.part == 0 }
+                if (timeline.segments.getOrNull(index - 1) is Change) {
+                    // Übung und Seite wurden schon beim Wechsel angesagt.
+                    "Los. ${goal?.let { "$it." } ?: ""}"
+                } else {
+                    val prefix = if (_state.value.program.rounds > 1 && segment.indexInRound == 0) {
+                        "Durchgang ${segment.round + 1}. "
+                    } else {
+                        ""
+                    }
+                    val details = listOfNotNull(goal, segment.side).joinToString(". ")
+                        .ifEmpty { "${seconds(segment)} Sekunden" }
+                    "$prefix${segment.exercise.spokenName}. $details."
+                }
             }
-            is Rest -> "Pause. ${WorkoutPlan.REST_SECONDS} Sekunden durchatmen."
+            is Rest -> "Pause. ${seconds(segment)} Sekunden durchatmen."
+            is Change -> announceChange(segment.next)
         }
         cues.speak(text)
     }
+
+    private fun seconds(segment: Segment) = (segment.durationMs / 1000).toInt()
+
+    private fun announceChange(next: Work): String =
+        if (next.part > 0) {
+            listOfNotNull("Seitenwechsel", next.side).joinToString(". ") + "."
+        } else {
+            "Wechsel. Als nächstes ${next.exercise.spokenName}${next.side?.let { ", $it" } ?: ""}."
+        }
 
     private fun onSecond(index: Int, segment: Segment, secondsLeft: Int) {
         when {
@@ -243,8 +277,12 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
                 if (next != null) cues.speak("Gleich geht's weiter mit Durchgang ${next.round + 1}: ${next.exercise.spokenName}.")
             }
             secondsLeft == 10 && segment is Work -> {
-                val next = timeline.segments.getOrNull(index + 1)
-                cues.speak(if (next is Work) "Noch 10 Sekunden. Als nächstes ${next.exercise.spokenName}." else "Noch 10 Sekunden.")
+                val text = when (val next = timeline.segments.getOrNull(index + 1)) {
+                    is Work -> "Noch 10 Sekunden. Als nächstes ${next.exercise.spokenName}."
+                    is Change -> if (next.next.part > 0) "Noch 10 Sekunden. Danach Seitenwechsel." else "Noch 10 Sekunden."
+                    else -> "Noch 10 Sekunden."
+                }
+                cues.speak(text)
             }
         }
     }
@@ -275,16 +313,15 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Speichert das Training im Verlauf, wenn mindestens eine Übung vollständig absolviert wurde. */
     private fun saveRecord(): WorkoutRecord? {
-        if (completedWork.isEmpty()) return null
+        val counts = timeline.completedExercises(completedWork)
+        if (counts.isEmpty()) return null
         val record = WorkoutRecord(
             startedAt = startedAt,
             finishedAt = System.currentTimeMillis(),
             trainedMs = trainedMs,
-            exerciseCounts = completedWork
-                .map { (timeline.segments[it] as Work).exercise.number }
-                .groupingBy { it }
-                .eachCount(),
-            plannedExercises = timeline.segments.count { it is Work },
+            exerciseCounts = counts,
+            plannedExercises = timeline.plannedExercises,
+            program = _state.value.program,
         )
         val records = _history.value + record
         historyStore.save(records)
@@ -300,5 +337,6 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         const val KEY_SOUND = "sound"
         const val KEY_VOICE = "voice"
         const val KEY_VIBRATION = "vibration"
+        const val KEY_PROGRAM = "program"
     }
 }

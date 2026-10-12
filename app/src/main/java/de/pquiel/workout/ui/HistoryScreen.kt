@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.pquiel.workout.model.HistorySort
 import de.pquiel.workout.model.HistorySummary
-import de.pquiel.workout.model.WorkoutPlan
+import de.pquiel.workout.model.Program
 import de.pquiel.workout.model.WorkoutRecord
 import de.pquiel.workout.model.formatDuration
 import java.time.Instant
@@ -215,14 +215,17 @@ private fun SummaryCard(summary: HistorySummary) {
             Stat("Trainingszeit", formatDuration(summary.trainedMs), Modifier.weight(1f))
             Stat("Übungen", summary.completedExercises.toString(), Modifier.weight(1f))
         }
-        HorizontalDivider(Modifier.padding(vertical = 4.dp))
-        Text("Absolvierte Übungen", fontWeight = FontWeight.Bold, color = Navy)
-        WorkoutPlan.exercises.forEach { ex ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                NumberBadge(ex.number, ex.color, size = 24.dp)
-                Spacer(Modifier.width(10.dp))
-                Text(ex.germanName, modifier = Modifier.weight(1f))
-                Text("${summary.exerciseCounts[ex.number] ?: 0}×", fontWeight = FontWeight.Bold, color = ex.color)
+        Program.entries.forEach { program ->
+            val counts = summary.exerciseCounts[program] ?: return@forEach
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            Text("Absolvierte Übungen · ${program.label}", fontWeight = FontWeight.Bold, color = Navy)
+            program.exercises.forEach { ex ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    NumberBadge(ex.number, ex.color, size = 24.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(ex.germanName, modifier = Modifier.weight(1f))
+                    Text("${counts[ex.number] ?: 0}×", fontWeight = FontWeight.Bold, color = ex.color)
+                }
             }
         }
     }
@@ -244,6 +247,7 @@ private fun RecordCard(record: WorkoutRecord, onDelete: () -> Unit) {
     WhiteCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
+                Text(record.program.label.uppercase(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = NavyLight)
                 Text(end.format(dateFormat), fontWeight = FontWeight.Black, color = Navy)
                 Text("${start.format(timeFormat)} – ${end.format(timeFormat)} Uhr", style = MaterialTheme.typography.bodyMedium)
             }
@@ -256,11 +260,13 @@ private fun RecordCard(record: WorkoutRecord, onDelete: () -> Unit) {
             Stat("Übungen", "${record.completedExercises}/${record.plannedExercises}", Modifier.weight(1f))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            WorkoutPlan.exercises.forEach { ex ->
+            // Bei nur einem Durchgang reicht die Farbe als Zeichen für „absolviert“.
+            val showCounts = record.program.rounds > 1
+            record.program.exercises.forEach { ex ->
                 val count = record.exerciseCounts[ex.number] ?: 0
                 NumberBadge(ex.number, if (count > 0) ex.color else Color.LightGray, size = 24.dp)
-                Text(" ${count}×", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Spacer(Modifier.width(10.dp))
+                if (showCounts) Text(" ${count}×", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Spacer(Modifier.width(if (showCounts) 10.dp else 6.dp))
             }
         }
         if (!complete) {

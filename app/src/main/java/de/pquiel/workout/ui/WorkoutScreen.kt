@@ -51,12 +51,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.pquiel.workout.Status
 import de.pquiel.workout.WorkoutState
+import de.pquiel.workout.model.Change
+import de.pquiel.workout.model.Exercise
 import de.pquiel.workout.model.Prepare
+import de.pquiel.workout.model.Program
 import de.pquiel.workout.model.Rest
 import de.pquiel.workout.model.Segment
 import de.pquiel.workout.model.Timeline
 import de.pquiel.workout.model.Work
-import de.pquiel.workout.model.WorkoutPlan
 import de.pquiel.workout.model.formatClock
 
 @Composable
@@ -110,7 +112,7 @@ fun WorkoutScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 Spacer(Modifier.height(12.dp))
-                SegmentHeader(segment, timeline, pos.index, accent)
+                SegmentHeader(state.program, segment, timeline, pos.index, accent)
                 Spacer(Modifier.height(20.dp))
                 CountdownRing(
                     fraction = pos.remainingInSegmentMs.toFloat() / segment.durationMs,
@@ -136,7 +138,7 @@ fun WorkoutScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
-            NextUp(timeline.segments.getOrNull(pos.index + 1))
+            NextUp(state.program, timeline, pos.index)
             Spacer(Modifier.height(12.dp))
             Controls(paused, accent, onTogglePause, onNext, onPrevious)
             Spacer(Modifier.height(8.dp))
@@ -171,10 +173,16 @@ private fun Color.compositeOverWhite(): Color =
 @Composable
 private fun TopBar(state: WorkoutState, timeline: Timeline, onClose: () -> Unit) {
     val segment = state.position.segment
+    val program = state.program
     val roundLabel = when (segment) {
         is Prepare -> "Gleich geht's los"
-        is Work -> "Durchgang ${segment.round + 1} von ${WorkoutPlan.ROUNDS}"
+        is Work -> if (program.rounds > 1) {
+            "Durchgang ${segment.round + 1} von ${program.rounds}"
+        } else {
+            "Übung ${segment.indexInRound + 1} von ${program.exercises.size}"
+        }
         is Rest -> "Pause nach Durchgang ${segment.afterRound + 1}"
+        is Change -> if (segment.next.part > 0) "Seitenwechsel" else "Wechsel zur nächsten Übung"
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onClose) {
@@ -206,16 +214,16 @@ private fun TopBar(state: WorkoutState, timeline: Timeline, onClose: () -> Unit)
 }
 
 @Composable
-private fun SegmentHeader(segment: Segment, timeline: Timeline, index: Int, accent: Color) {
+private fun SegmentHeader(program: Program, segment: Segment, timeline: Timeline, index: Int, accent: Color) {
     when (segment) {
         is Work -> {
-            RoundDots(current = segment.indexInRound)
+            RoundDots(program.exercises, current = segment.indexInRound)
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 NumberBadge(segment.exercise.number, segment.exercise.color, size = 32.dp)
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    "ÜBUNG ${segment.indexInRound + 1} VON ${WorkoutPlan.exercises.size}",
+                    "ÜBUNG ${segment.indexInRound + 1} VON ${program.exercises.size}",
                     fontWeight = FontWeight.Bold,
                     color = accent,
                 )
@@ -223,6 +231,21 @@ private fun SegmentHeader(segment: Segment, timeline: Timeline, index: Int, acce
             Spacer(Modifier.height(8.dp))
             Title(segment.exercise.name.uppercase())
             Subtitle(segment.exercise.germanName)
+            WorkDetails(segment, accent)
+        }
+        is Change -> {
+            val next = segment.next
+            RoundDots(program.exercises, current = next.indexInRound)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                if (next.part > 0) "SEITENWECHSEL" else "POSITION EINNEHMEN",
+                fontWeight = FontWeight.Bold,
+                color = accent,
+            )
+            Spacer(Modifier.height(8.dp))
+            Title(next.exercise.name.uppercase())
+            Subtitle(next.exercise.germanName)
+            WorkDetails(next, accent)
         }
         is Rest -> {
             Text("PAUSE", fontWeight = FontWeight.Bold, color = accent)
@@ -236,6 +259,7 @@ private fun SegmentHeader(segment: Segment, timeline: Timeline, index: Int, acce
             Spacer(Modifier.height(8.dp))
             Title(first?.exercise?.name?.uppercase() ?: "LOS GEHT'S")
             Subtitle(first?.exercise?.germanName ?: "")
+            first?.let { WorkDetails(it, accent) }
         }
     }
 }
@@ -262,11 +286,33 @@ private fun Subtitle(text: String) {
     )
 }
 
-/** Zeigt die vier Übungen eines Durchgangs; erledigte und aktuelle sind gefüllt. */
+/** Seite und Wiederholungsziel einer Übung, sofern das Programm sie vorgibt. */
 @Composable
-private fun RoundDots(current: Int) {
+private fun WorkDetails(work: Work, accent: Color) {
+    val side = work.side
+    val target = work.exercise.target
+    if (side == null && target == null) return
+    Spacer(Modifier.height(10.dp))
+    if (side != null) {
+        Text(
+            if (work.partCount > 1) "$side · Seite ${work.part + 1} von ${work.partCount}" else side,
+            modifier = Modifier
+                .background(accent, RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(6.dp))
+    }
+    if (target != null) Text(target, fontWeight = FontWeight.Bold, color = Navy, textAlign = TextAlign.Center)
+}
+
+/** Zeigt die Übungen eines Durchgangs; erledigte und aktuelle sind gefüllt. */
+@Composable
+private fun RoundDots(exercises: List<Exercise>, current: Int) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        WorkoutPlan.exercises.forEachIndexed { i, ex ->
+        exercises.forEachIndexed { i, ex ->
             val modifier = Modifier
                 .size(if (i == current) 16.dp else 12.dp)
                 .let {
@@ -284,6 +330,7 @@ private fun TipsCard(segment: Segment, timeline: Timeline, index: Int, accent: C
         is Work -> segment.exercise.tips
         is Prepare -> timeline.nextWork(index + 1)?.exercise?.tips.orEmpty()
         is Rest -> listOf("Ruhig und tief atmen", "Einen Schluck Wasser trinken", "Locker ausschütteln")
+        is Change -> segment.next.exercise.tips
     }
     if (tips.isEmpty()) return
     Column(
@@ -303,11 +350,16 @@ private fun TipsCard(segment: Segment, timeline: Timeline, index: Int, accent: C
 }
 
 @Composable
-private fun NextUp(next: Segment?) {
-    val text = when (next) {
-        null -> "Letzte Übung – gib alles!"
+private fun NextUp(program: Program, timeline: Timeline, index: Int) {
+    val text = when (val next = timeline.segments.getOrNull(index + 1)) {
+        null -> if (program.rounds > 1) "Letzte Übung – gib alles!" else "Letzte Übung"
         is Work -> "Als nächstes: ${next.exercise.name}"
-        is Rest -> "Als nächstes: ${WorkoutPlan.REST_SECONDS} Sekunden Pause"
+        is Rest -> "Als nächstes: ${next.durationMs / 1000} Sekunden Pause"
+        is Change -> {
+            val work = next.next
+            if (work.part > 0) "Als nächstes: ${work.side ?: "andere Seite"}"
+            else "Als nächstes: ${work.exercise.name}"
+        }
         is Prepare -> ""
     }
     Text(text, fontWeight = FontWeight.SemiBold, color = Navy.copy(alpha = 0.8f))

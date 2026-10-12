@@ -48,6 +48,8 @@ fun WorkoutApp(vm: WorkoutViewModel = viewModel()) {
 
     when (state.status) {
         Status.IDLE -> HomeScreen(
+            program = state.program,
+            onSelectProgram = vm::selectProgram,
             settings = state.settings,
             workoutMs = vm.timeline.workoutMs,
             completedWorkouts = history.size,
@@ -66,6 +68,7 @@ fun WorkoutApp(vm: WorkoutViewModel = viewModel()) {
             onStop = vm::stop,
         )
         Status.FINISHED -> DoneScreen(
+            program = state.program,
             workoutMs = vm.timeline.workoutMs,
             record = state.lastRecord,
             onRestart = vm::start,

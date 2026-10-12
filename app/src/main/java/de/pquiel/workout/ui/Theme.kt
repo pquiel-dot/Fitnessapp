@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import de.pquiel.workout.model.Change
 import de.pquiel.workout.model.Exercise
 import de.pquiel.workout.model.Prepare
 import de.pquiel.workout.model.Rest
@@ -22,6 +23,7 @@ fun Segment.accentColor(): Color = when (this) {
     is Work -> exercise.color
     is Rest -> RestGreen
     is Prepare -> NavyLight
+    is Change -> next.exercise.color
 }
 
 private val colors = lightColorScheme(

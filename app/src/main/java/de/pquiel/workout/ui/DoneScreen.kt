@@ -27,13 +27,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.pquiel.workout.model.WorkoutPlan
+import de.pquiel.workout.model.Program
 import de.pquiel.workout.model.WorkoutRecord
 import de.pquiel.workout.model.formatDuration
 import de.pquiel.workout.model.formatClock
 
 @Composable
 fun DoneScreen(
+    program: Program,
     workoutMs: Long,
     record: WorkoutRecord?,
     onRestart: () -> Unit,
@@ -58,10 +59,10 @@ fun DoneScreen(
         Spacer(Modifier.height(24.dp))
         Text("GESCHAFFT!", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
-        val total = WorkoutPlan.ROUNDS * WorkoutPlan.exercises.size
+        val total = program.timeline.plannedExercises
         Text(
             if (record == null || record.completedExercises >= total) {
-                "${WorkoutPlan.ROUNDS} Durchgänge · $total Übungen"
+                if (program.rounds > 1) "${program.rounds} Durchgänge · $total Übungen" else "${program.label} · $total Übungen"
             } else {
                 "${record.completedExercises} von $total Übungen absolviert"
             },
