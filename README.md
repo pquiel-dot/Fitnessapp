@@ -19,6 +19,10 @@ Android-App, die dich durch den 10-Minuten-Workoutplan führt:
 - Pausieren, Übung überspringen oder zurückspringen
 - Bildschirm bleibt während des Trainings an
 - Pieptöne, Sprache und Vibration einzeln abschaltbar
+- **Verlauf**: Jedes abgeschlossene Training wird mit Datum und Uhrzeit (Start und Ende),
+  tatsächlich trainierter Zeit und den vollständig absolvierten Übungen gespeichert
+  (übersprungene Übungen zählen nicht). Die Übersicht zeigt Gesamtwerte pro Übung und lässt
+  sich nach Datum, Dauer oder Anzahl Übungen sortieren; einzelne Einträge lassen sich löschen.
 
 ## APK herunterladen
 
@@ -35,7 +39,7 @@ Mit Android Studio öffnen oder per Kommandozeile (JDK 17 + Android SDK nötig):
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Tests der Timer-Logik: `./gradlew testDebugUnitTest`
+Tests der Timer- und Verlaufs-Logik: `./gradlew testDebugUnitTest`
 
 Voraussetzung: Android 8.0 (API 26) oder neuer. Für Sprachansagen muss eine deutsche
 Text-to-Speech-Stimme installiert sein (bei den meisten Geräten vorinstalliert).

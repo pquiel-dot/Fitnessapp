@@ -13,6 +13,7 @@ import de.pquiel.workout.model.Segment
 import de.pquiel.workout.model.Timeline
 import de.pquiel.workout.model.Work
 import de.pquiel.workout.model.WorkoutPlan
+import de.pquiel.workout.model.WorkoutRecord
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,8 @@ data class WorkoutState(
     val position: Position,
     val elapsedMs: Long,
     val settings: Settings,
+    /** Das zuletzt gespeicherte Training, solange der Abschlussbildschirm angezeigt wird. */
+    val lastRecord: WorkoutRecord? = null,
 )
 
 class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
@@ -42,6 +45,10 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
 
     private val cues = Cues(app)
     private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val historyStore = HistoryStore(app.filesDir)
+
+    private val _history = MutableStateFlow(historyStore.load())
+    val history: StateFlow<List<WorkoutRecord>> = _history.asStateFlow()
 
     private val _state = MutableStateFlow(
         WorkoutState(
@@ -64,6 +71,13 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
     private var lastIndex = -1
     private var lastSecond = -1
 
+    // Für den Verlauf: Startzeitpunkt, tatsächlich trainierte Zeit und vollständig absolvierte Übungen.
+    private var startedAt = 0L
+    private var trainedMs = 0L
+    private var lastTickAt = 0L
+    private var seeked = false
+    private val completedWork = mutableSetOf<Int>()
+
     init {
         applySettings(_state.value.settings)
     }
@@ -73,14 +87,22 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         accumulatedMs = 0
         lastIndex = -1
         lastSecond = -1
+        startedAt = System.currentTimeMillis()
+        trainedMs = 0
+        seeked = false
+        completedWork.clear()
         runningSince = now()
-        _state.update { it.copy(status = Status.RUNNING) }
+        lastTickAt = runningSince
+        _state.update {
+            it.copy(status = Status.RUNNING, position = timeline.positionAt(0), elapsedMs = 0, lastRecord = null)
+        }
         startTicker()
     }
 
     fun togglePause() {
         when (_state.value.status) {
             Status.RUNNING -> {
+                countTrainedTime()
                 accumulatedMs = elapsedNow()
                 ticker?.cancel()
                 cues.stopSpeaking()
@@ -88,6 +110,7 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
             }
             Status.PAUSED -> {
                 runningSince = now()
+                lastTickAt = runningSince
                 _state.update { it.copy(status = Status.RUNNING) }
                 startTicker()
             }
@@ -115,7 +138,15 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         ticker?.cancel()
         cues.stopSpeaking()
         accumulatedMs = 0
-        _state.update { it.copy(status = Status.IDLE, position = timeline.positionAt(0), elapsedMs = 0) }
+        _state.update {
+            it.copy(status = Status.IDLE, position = timeline.positionAt(0), elapsedMs = 0, lastRecord = null)
+        }
+    }
+
+    fun deleteRecord(record: WorkoutRecord) {
+        val records = _history.value.filterNot { it.id == record.id }
+        historyStore.save(records)
+        _history.value = records
     }
 
     fun setSound(enabled: Boolean) = changeSettings { it.copy(sound = enabled) }
@@ -145,6 +176,8 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         if (_state.value.status == Status.RUNNING) accumulatedMs + (now() - runningSince) else accumulatedMs
 
     private fun seekTo(ms: Long) {
+        countTrainedTime()
+        seeked = true
         accumulatedMs = ms
         if (_state.value.status == Status.RUNNING) runningSince = now()
         refresh()
@@ -161,8 +194,15 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun refresh() {
+        countTrainedTime()
         val elapsed = elapsedNow()
         val pos = timeline.positionAt(elapsed)
+        // Nur Übungen, die bis zum Ende durchlaufen wurden, zählen als absolviert – nicht übersprungene.
+        if (!seeked && lastIndex >= 0 && pos.index > lastIndex) {
+            for (i in lastIndex until pos.index) if (timeline.segments[i] is Work) completedWork += i
+            if (pos.finished && timeline.segments[pos.index] is Work) completedWork += pos.index
+        }
+        seeked = false
         if (pos.finished) {
             finish()
             return
@@ -209,14 +249,47 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Addiert die seit dem letzten Aufruf vergangene Zeit, sofern das Training läuft (ohne Vorbereitung). */
+    private fun countTrainedTime() {
+        val t = now()
+        val current = _state.value
+        if (current.status == Status.RUNNING && current.position.segment !is Prepare) trainedMs += t - lastTickAt
+        lastTickAt = t
+    }
+
     private fun finish() {
         ticker?.cancel()
         accumulatedMs = timeline.totalMs
         cues.transition()
         cues.speak("Geschafft! Super gemacht.")
+        val record = saveRecord()
         _state.update {
-            it.copy(status = Status.FINISHED, position = timeline.positionAt(timeline.totalMs), elapsedMs = timeline.totalMs)
+            it.copy(
+                status = Status.FINISHED,
+                position = timeline.positionAt(timeline.totalMs),
+                elapsedMs = timeline.totalMs,
+                lastRecord = record,
+            )
         }
+    }
+
+    /** Speichert das Training im Verlauf, wenn mindestens eine Übung vollständig absolviert wurde. */
+    private fun saveRecord(): WorkoutRecord? {
+        if (completedWork.isEmpty()) return null
+        val record = WorkoutRecord(
+            startedAt = startedAt,
+            finishedAt = System.currentTimeMillis(),
+            trainedMs = trainedMs,
+            exerciseCounts = completedWork
+                .map { (timeline.segments[it] as Work).exercise.number }
+                .groupingBy { it }
+                .eachCount(),
+            plannedExercises = timeline.segments.count { it is Work },
+        )
+        val records = _history.value + record
+        historyStore.save(records)
+        _history.value = records
+        return record
     }
 
     override fun onCleared() {
