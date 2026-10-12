@@ -21,12 +21,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -52,7 +54,9 @@ import de.pquiel.workout.model.formatClock
 fun HomeScreen(
     settings: Settings,
     workoutMs: Long,
+    completedWorkouts: Int,
     onStart: () -> Unit,
+    onHistory: () -> Unit,
     onSound: (Boolean) -> Unit,
     onVoice: (Boolean) -> Unit,
     onVibration: (Boolean) -> Unit,
@@ -83,7 +87,7 @@ fun HomeScreen(
                 .padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Header() }
+            item { Header(completedWorkouts, onHistory) }
             item {
                 SectionCard {
                     Bullet("Jede Übung ${WorkoutPlan.EXERCISE_SECONDS} Sekunden")
@@ -117,21 +121,34 @@ fun HomeScreen(
 }
 
 @Composable
-private fun Header() {
-    Column(
+private fun Header(completedWorkouts: Int, onHistory: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(Navy)
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(start = 20.dp, end = 8.dp, top = 24.dp, bottom = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("WORKOUTPLAN", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-        Text(
-            "${WorkoutPlan.ROUNDS} DURCHGÄNGE · CA. 10 MINUTEN",
-            color = Color.White.copy(alpha = 0.85f),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Column(Modifier.weight(1f)) {
+            Text("WORKOUTPLAN", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+            Text(
+                "${WorkoutPlan.ROUNDS} DURCHGÄNGE · CA. 10 MINUTEN",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            IconButton(onClick = onHistory) {
+                Icon(Icons.Filled.History, contentDescription = "Verlauf", tint = Color.White)
+            }
+            Text(
+                if (completedWorkouts == 1) "1 Training" else "$completedWorkouts Trainings",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 12.sp,
+            )
+        }
     }
 }
 
