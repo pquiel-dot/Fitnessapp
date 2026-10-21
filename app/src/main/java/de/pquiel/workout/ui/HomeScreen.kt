@@ -56,6 +56,7 @@ import de.pquiel.workout.model.Rest
 import de.pquiel.workout.model.Work
 import de.pquiel.workout.model.WorkoutPlan
 import de.pquiel.workout.model.formatClock
+import de.pquiel.workout.strava.StravaState
 
 @Composable
 fun HomeScreen(
@@ -69,6 +70,11 @@ fun HomeScreen(
     onSound: (Boolean) -> Unit,
     onVoice: (Boolean) -> Unit,
     onVibration: (Boolean) -> Unit,
+    strava: StravaState,
+    onStravaConnect: (clientId: String, clientSecret: String) -> Unit,
+    onStravaDisconnect: () -> Unit,
+    onStravaAutoUpload: (Boolean) -> Unit,
+    onStravaDismissMessage: () -> Unit,
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -120,6 +126,18 @@ fun HomeScreen(
                     SettingRow("Sprachansagen", settings.voice, onVoice)
                     SettingRow("Vibration", settings.vibration, onVibration)
                 }
+            }
+            item {
+                StravaCard(
+                    state = strava,
+                    onConnect = onStravaConnect,
+                    onDisconnect = onStravaDisconnect,
+                    onAutoUpload = onStravaAutoUpload,
+                    onDismissMessage = onStravaDismissMessage,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                )
             }
             item { Spacer(Modifier.height(8.dp)) }
         }

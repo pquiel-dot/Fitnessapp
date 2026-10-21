@@ -47,6 +47,32 @@ vollständig durchlaufen wurden.
   tatsächlich trainierter Zeit und den vollständig absolvierten Übungen gespeichert
   (übersprungene Übungen zählen nicht). Die Übersicht zeigt Gesamtwerte pro Übung und lässt
   sich nach Datum, Dauer oder Anzahl Übungen sortieren; einzelne Einträge lassen sich löschen.
+- **Strava-Export**: Trainings auf Wunsch automatisch nach jedem Abschluss zu Strava hochladen (siehe unten)
+
+## Strava-Export
+
+Abgeschlossene Trainings können automatisch als Aktivität zu Strava hochgeladen werden
+(Workoutplan als „Krafttraining“, Running-Mobilisation als „Training“, mit Startzeit,
+trainierter Dauer und den absolvierten Übungen in der Beschreibung).
+
+Einmalige Einrichtung:
+
+1. Unter [strava.com/settings/api](https://www.strava.com/settings/api) eine eigene API-Anwendung
+   anlegen. Name und Website sind frei wählbar; als **Autorisierungs-Callback-Domain** `localhost`
+   eintragen.
+2. In der App auf der Startseite im Bereich **Strava** die angezeigte **Client-ID** und das
+   **Client-Secret** eintragen und auf **Mit Strava verbinden** tippen.
+3. Bei Strava anmelden und das Hochladen von Aktivitäten erlauben – danach geht es automatisch zurück
+   in die App.
+
+Ab dann wird jedes gespeicherte Training direkt nach dem Abschluss hochgeladen (abschaltbar).
+Ohne Internet wird der Upload automatisch nachgeholt, sobald wieder eine Verbindung besteht.
+Im Verlauf zeigt jedes Training seinen Strava-Stand; ältere oder fehlgeschlagene Trainings lassen
+sich dort per **Zu Strava hochladen** nachträglich exportieren. Die Sichtbarkeit der Aktivität
+richtet sich nach den Privatsphäre-Einstellungen im Strava-Konto.
+
+Client-ID, Client-Secret und Zugangstoken liegen nur im privaten App-Speicher des Handys, nicht
+im Quelltext oder APK.
 
 ## APK herunterladen
 
