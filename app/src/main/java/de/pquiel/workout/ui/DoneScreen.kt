@@ -31,12 +31,14 @@ import de.pquiel.workout.model.Program
 import de.pquiel.workout.model.WorkoutRecord
 import de.pquiel.workout.model.formatDuration
 import de.pquiel.workout.model.formatClock
+import de.pquiel.workout.strava.StravaUpload
 
 @Composable
 fun DoneScreen(
     program: Program,
     workoutMs: Long,
     record: WorkoutRecord?,
+    stravaUpload: StravaUpload?,
     onRestart: () -> Unit,
     onHome: () -> Unit,
     onHistory: () -> Unit,
@@ -82,6 +84,15 @@ fun DoneScreen(
         if (record != null) {
             Spacer(Modifier.height(12.dp))
             Text("✓ Im Verlauf gespeichert", color = RestGreenLight, fontWeight = FontWeight.SemiBold)
+        }
+        stravaUpload?.let { upload ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                upload.label(),
+                color = if (upload is StravaUpload.Done) RestGreenLight else Color.White.copy(alpha = 0.85f),
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
         }
         Spacer(Modifier.height(48.dp))
         Button(

@@ -2,6 +2,7 @@ package de.pquiel.workout
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +16,8 @@ import de.pquiel.workout.model.Segment
 import de.pquiel.workout.model.Timeline
 import de.pquiel.workout.model.Work
 import de.pquiel.workout.model.WorkoutRecord
+import de.pquiel.workout.strava.Strava
+import de.pquiel.workout.strava.StravaState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +51,8 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
     private val initialProgram = Program.fromName(prefs.getString(KEY_PROGRAM, null)) ?: Program.STRENGTH
     private val historyStore = HistoryStore(app.filesDir)
+    private val strava = Strava.get(app)
+    val stravaState: StateFlow<StravaState> = strava.state
 
     private val _history = MutableStateFlow(historyStore.load())
     val history: StateFlow<List<WorkoutRecord>> = _history.asStateFlow()
@@ -159,7 +164,27 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         val records = _history.value.filterNot { it.id == record.id }
         historyStore.save(records)
         _history.value = records
+        strava.forget(record.id)
     }
+
+    /** Speichert die Zugangsdaten und gibt die Adresse der Strava-Anmeldung zurück. */
+    fun startStravaAuthorization(clientId: String, clientSecret: String): String =
+        strava.startAuthorization(clientId, clientSecret)
+
+    /** Verarbeitet die Rückleitung nach der Strava-Anmeldung; gibt false zurück, wenn [uri] keine ist. */
+    fun handleStravaRedirect(uri: Uri?): Boolean {
+        if (uri == null || !strava.isRedirect(uri)) return false
+        viewModelScope.launch { strava.completeAuthorization(uri) }
+        return true
+    }
+
+    fun disconnectStrava() {
+        viewModelScope.launch { strava.disconnect() }
+    }
+
+    fun setStravaAutoUpload(enabled: Boolean) = strava.setAutoUpload(enabled)
+    fun uploadToStrava(record: WorkoutRecord) = strava.enqueueUpload(record)
+    fun clearStravaMessage() = strava.clearMessage()
 
     fun setSound(enabled: Boolean) = changeSettings { it.copy(sound = enabled) }
     fun setVoice(enabled: Boolean) = changeSettings { it.copy(voice = enabled) }
@@ -326,6 +351,7 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
         val records = _history.value + record
         historyStore.save(records)
         _history.value = records
+        if (strava.state.value.autoUploadActive) strava.enqueueUpload(record)
         return record
     }
 

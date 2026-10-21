@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -51,6 +52,8 @@ import de.pquiel.workout.model.HistorySummary
 import de.pquiel.workout.model.Program
 import de.pquiel.workout.model.WorkoutRecord
 import de.pquiel.workout.model.formatDuration
+import de.pquiel.workout.strava.StravaState
+import de.pquiel.workout.strava.StravaUpload
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -64,8 +67,10 @@ private fun Long.toLocal() = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefa
 @Composable
 fun HistoryScreen(
     records: List<WorkoutRecord>,
+    strava: StravaState,
     onBack: () -> Unit,
     onDelete: (WorkoutRecord) -> Unit,
+    onUpload: (WorkoutRecord) -> Unit,
 ) {
     var sort by rememberSaveable { mutableStateOf(HistorySort.NEWEST) }
     var toDelete by remember { mutableStateOf<WorkoutRecord?>(null) }
@@ -97,7 +102,13 @@ fun HistoryScreen(
                     )
                 }
                 items(sorted, key = { it.id }) { record ->
-                    RecordCard(record, onDelete = { toDelete = record })
+                    RecordCard(
+                        record,
+                        upload = strava.uploads[record.id],
+                        canUpload = strava.connected,
+                        onDelete = { toDelete = record },
+                        onUpload = { onUpload(record) },
+                    )
                 }
                 item { Spacer(Modifier.navigationBarsPadding().padding(bottom = 8.dp)) }
             }
@@ -110,7 +121,8 @@ fun HistoryScreen(
             title = { Text("Training löschen?") },
             text = {
                 val t = record.finishedAt.toLocal()
-                Text("Das Training vom ${t.format(dateFormat)} um ${t.format(timeFormat)} Uhr wird aus dem Verlauf entfernt.")
+                val onStrava = if (strava.uploads[record.id] is StravaUpload.Done) " Die Aktivität auf Strava bleibt erhalten." else ""
+                Text("Das Training vom ${t.format(dateFormat)} um ${t.format(timeFormat)} Uhr wird aus dem Verlauf entfernt.$onStrava")
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -240,7 +252,13 @@ private fun Stat(label: String, value: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RecordCard(record: WorkoutRecord, onDelete: () -> Unit) {
+private fun RecordCard(
+    record: WorkoutRecord,
+    upload: StravaUpload?,
+    canUpload: Boolean,
+    onDelete: () -> Unit,
+    onUpload: () -> Unit,
+) {
     val start = record.startedAt.toLocal()
     val end = record.finishedAt.toLocal()
     val complete = record.completedExercises >= record.plannedExercises
@@ -275,6 +293,33 @@ private fun RecordCard(record: WorkoutRecord, onDelete: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFFB45309),
             )
+        }
+        StravaRow(upload, canUpload, onUpload)
+    }
+}
+
+/** Upload-Stand eines Trainings; noch nicht oder erfolglos hochgeladene Trainings lassen sich nachträglich hochladen. */
+@Composable
+private fun StravaRow(upload: StravaUpload?, canUpload: Boolean, onUpload: () -> Unit) {
+    val retry = upload == null || upload is StravaUpload.Failed
+    if (upload == null && !canUpload) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (upload != null) {
+            Text(
+                upload.label(),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (upload is StravaUpload.Done) StravaOrange else Navy,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
+        if (retry && canUpload) {
+            TextButton(onClick = onUpload) {
+                Icon(Icons.Filled.CloudUpload, contentDescription = null, tint = StravaOrange, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if (upload == null) "Zu Strava hochladen" else "Erneut versuchen", color = StravaOrange)
+            }
         }
     }
 }
