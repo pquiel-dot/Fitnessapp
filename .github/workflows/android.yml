@@ -18,7 +18,21 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Signaturschlüssel bereitstellen
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/workout-release.p12"
+            echo "SIGNING_KEYSTORE_FILE=$RUNNER_TEMP/workout-release.p12" >> "$GITHUB_ENV"
+            echo "APK wird mit dem festen Schlüssel signiert."
+          else
+            echo "::warning::Secret SIGNING_KEYSTORE_BASE64 fehlt – APK wird mit wechselndem Debug-Schlüssel signiert und lässt sich nicht als Update installieren."
+          fi
+
       - name: Tests und APK bauen
+        env:
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest assembleDebug --stacktrace

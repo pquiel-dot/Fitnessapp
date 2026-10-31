@@ -16,10 +16,26 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        // Fester Schlüssel aus dem CI (GitHub-Secrets), damit jede neue APK als Update über die alte
+        // installiert werden kann. Ohne die Umgebungsvariablen bleibt der lokale Debug-Schlüssel.
+        val keystore = System.getenv("SIGNING_KEYSTORE_FILE")?.let(::file)?.takeIf { it.exists() }
+        val password = System.getenv("SIGNING_KEYSTORE_PASSWORD")
+        if (keystore != null && !password.isNullOrEmpty()) {
+            getByName("debug") {
+                storeFile = keystore
+                storeType = "PKCS12"
+                storePassword = password
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "workout"
+                keyPassword = password
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Mit dem Debug-Schlüssel signiert, damit das Release-APK direkt installierbar ist.
+            // Wie das Debug-APK signiert, damit das Release-APK direkt installierbar ist.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
