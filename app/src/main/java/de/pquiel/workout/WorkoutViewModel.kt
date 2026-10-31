@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.pquiel.workout.audio.Cues
 import de.pquiel.workout.model.Change
+import de.pquiel.workout.model.HistoryFile
 import de.pquiel.workout.model.Position
 import de.pquiel.workout.model.Prepare
 import de.pquiel.workout.model.Program
@@ -18,6 +19,7 @@ import de.pquiel.workout.model.Work
 import de.pquiel.workout.model.WorkoutRecord
 import de.pquiel.workout.strava.Strava
 import de.pquiel.workout.strava.StravaState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 enum class Status { IDLE, RUNNING, PAUSED, FINISHED }
 
@@ -46,6 +51,18 @@ data class WorkoutState(
     val lastRecord: WorkoutRecord? = null,
 )
 
+/** Stand der Sicherungsdatei des Verlaufs. */
+data class BackupState(
+    /** Name der verbundenen Datei; null, wenn keine verbunden ist. */
+    val fileName: String? = null,
+    val busy: Boolean = false,
+    /** Hinweis oder Fehlermeldung zur letzten Aktion. */
+    val message: String? = null,
+    val isError: Boolean = false,
+) {
+    val linked: Boolean get() = fileName != null
+}
+
 class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
     private val cues = Cues(app)
     private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -56,6 +73,11 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _history = MutableStateFlow(historyStore.load())
     val history: StateFlow<List<WorkoutRecord>> = _history.asStateFlow()
+
+    private val backup = HistoryBackup(app)
+    private val backupLock = Mutex()
+    private val _backupState = MutableStateFlow(BackupState(fileName = backup.uri?.let(backup::displayName)))
+    val backupState: StateFlow<BackupState> = _backupState.asStateFlow()
 
     private val _state = MutableStateFlow(
         WorkoutState(
@@ -162,9 +184,91 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteRecord(record: WorkoutRecord) {
         val records = _history.value.filterNot { it.id == record.id }
+        setHistory(records)
+        strava.forget(record.id)
+    }
+
+    /** Legt eine neue Sicherungsdatei an [uri] an und schreibt den bisherigen Verlauf hinein. */
+    fun createBackup(uri: Uri) = backupAction {
+        backup.link(uri)
+        backup.write(uri, _history.value)
+        BackupState(fileName = backup.displayName(uri), message = "Verlauf wird ab jetzt in dieser Datei gesichert.")
+    }
+
+    /**
+     * Verbindet eine vorhandene Sicherungsdatei (z. B. nach einer Neuinstallation), übernimmt ihre
+     * Trainings in den Verlauf und hält sie danach auf dem aktuellen Stand.
+     */
+    fun openBackup(uri: Uri) = backupAction {
+        val fromFile = backup.read(uri)
+            ?: return@backupAction _backupState.value.copy(
+                message = "Die gewählte Datei ist keine Verlaufsdatei des Workout Begleiters.",
+                isError = true,
+            )
+        backup.link(uri)
+        val (merged, added) = withContext(Dispatchers.Main) {
+            val current = _history.value
+            val merged = HistoryFile.merge(current, fromFile)
+            historyStore.save(merged)
+            _history.value = merged
+            merged to merged.size - current.size
+        }
+        backup.write(uri, merged)
+        val message = when (added) {
+            0 -> "Datei verbunden – keine neuen Trainings darin."
+            1 -> "Datei verbunden – 1 Training wiederhergestellt."
+            else -> "Datei verbunden – $added Trainings wiederhergestellt."
+        }
+        BackupState(fileName = backup.displayName(uri), message = message)
+    }
+
+    /** Trennt die Sicherungsdatei; die Datei selbst bleibt erhalten. */
+    fun unlinkBackup() {
+        backup.unlink()
+        _backupState.value = BackupState(message = "Sicherungsdatei getrennt. Die Datei bleibt auf dem Handy erhalten.")
+    }
+
+    fun clearBackupMessage() = _backupState.update { it.copy(message = null, isError = false) }
+
+    private fun backupAction(action: suspend () -> BackupState) {
+        _backupState.update { it.copy(busy = true, message = null, isError = false) }
+        viewModelScope.launch {
+            val result = backupLock.withLock {
+                try {
+                    withContext(Dispatchers.IO) { action() }
+                } catch (e: Exception) {
+                    _backupState.value.copy(message = "Sicherungsdatei: ${e.message ?: e.javaClass.simpleName}", isError = true)
+                }
+            }
+            _backupState.value = result.copy(busy = false)
+        }
+    }
+
+    /** Speichert den Verlauf im App-Speicher und – falls verbunden – in der Sicherungsdatei. */
+    private fun setHistory(records: List<WorkoutRecord>) {
         historyStore.save(records)
         _history.value = records
-        strava.forget(record.id)
+        val uri = backup.uri
+        if (uri == null) {
+            if (_backupState.value.linked) {
+                _backupState.value = BackupState(
+                    message = "Kein Zugriff mehr auf die Sicherungsdatei. Bitte im Verlauf erneut verbinden.",
+                    isError = true,
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            backupLock.withLock {
+                try {
+                    withContext(Dispatchers.IO) { backup.write(uri, records) }
+                } catch (e: Exception) {
+                    _backupState.update {
+                        it.copy(message = "Sicherungsdatei konnte nicht geschrieben werden: ${e.message ?: e.javaClass.simpleName}", isError = true)
+                    }
+                }
+            }
+        }
     }
 
     /** Speichert die Zugangsdaten und gibt die Adresse der Strava-Anmeldung zurück. */
@@ -348,9 +452,7 @@ class WorkoutViewModel(app: Application) : AndroidViewModel(app) {
             plannedExercises = timeline.plannedExercises,
             program = _state.value.program,
         )
-        val records = _history.value + record
-        historyStore.save(records)
-        _history.value = records
+        setHistory(_history.value + record)
         if (strava.state.value.autoUploadActive) strava.enqueueUpload(record)
         return record
     }

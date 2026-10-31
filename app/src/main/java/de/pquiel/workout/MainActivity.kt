@@ -50,6 +50,7 @@ fun WorkoutApp(vm: WorkoutViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     val history by vm.history.collectAsState()
     val strava by vm.stravaState.collectAsState()
+    val backup by vm.backupState.collectAsState()
     val context = LocalContext.current
     var showHistory by rememberSaveable { mutableStateOf(false) }
 
@@ -61,6 +62,11 @@ fun WorkoutApp(vm: WorkoutViewModel = viewModel()) {
             onBack = { showHistory = false },
             onDelete = vm::deleteRecord,
             onUpload = vm::uploadToStrava,
+            backup = backup,
+            onBackupCreate = vm::createBackup,
+            onBackupOpen = vm::openBackup,
+            onBackupUnlink = vm::unlinkBackup,
+            onBackupDismissMessage = vm::clearBackupMessage,
         )
         return
     }

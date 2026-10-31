@@ -1,5 +1,6 @@
 package de.pquiel.workout.ui
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.pquiel.workout.BackupState
 import de.pquiel.workout.model.HistorySort
 import de.pquiel.workout.model.HistorySummary
 import de.pquiel.workout.model.Program
@@ -71,6 +73,11 @@ fun HistoryScreen(
     onBack: () -> Unit,
     onDelete: (WorkoutRecord) -> Unit,
     onUpload: (WorkoutRecord) -> Unit,
+    backup: BackupState,
+    onBackupCreate: (Uri) -> Unit,
+    onBackupOpen: (Uri) -> Unit,
+    onBackupUnlink: () -> Unit,
+    onBackupDismissMessage: () -> Unit,
 ) {
     var sort by rememberSaveable { mutableStateOf(HistorySort.NEWEST) }
     var toDelete by remember { mutableStateOf<WorkoutRecord?>(null) }
@@ -83,15 +90,26 @@ fun HistoryScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         TopBar(sort = sort, onSort = { sort = it }, onBack = onBack, canSort = records.size > 1)
-        if (records.isEmpty()) {
-            EmptyHistory()
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item { Spacer(Modifier.size(4.dp)) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { Spacer(Modifier.size(4.dp)) }
+            if (records.isEmpty()) {
+                item { EmptyHistory() }
+            } else {
                 item { SummaryCard(summary) }
+            }
+            item {
+                BackupCard(
+                    state = backup,
+                    onCreate = onBackupCreate,
+                    onOpen = onBackupOpen,
+                    onUnlink = onBackupUnlink,
+                    onDismissMessage = onBackupDismissMessage,
+                )
+            }
+            if (records.isNotEmpty()) {
                 item {
                     Text(
                         "ABGESCHLOSSENE TRAININGS · ${sort.label.uppercase()}",
@@ -110,8 +128,8 @@ fun HistoryScreen(
                         onUpload = { onUpload(record) },
                     )
                 }
-                item { Spacer(Modifier.navigationBarsPadding().padding(bottom = 8.dp)) }
             }
+            item { Spacer(Modifier.navigationBarsPadding().padding(bottom = 8.dp)) }
         }
     }
 
@@ -187,17 +205,17 @@ private fun TopBar(sort: HistorySort, onSort: (HistorySort) -> Unit, onBack: () 
 private fun EmptyHistory() {
     Column(
         Modifier
-            .fillMaxSize()
-            .padding(32.dp),
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
         Icon(Icons.Filled.History, contentDescription = null, tint = Navy.copy(alpha = 0.4f), modifier = Modifier.size(96.dp))
         Spacer(Modifier.size(16.dp))
         Text("Noch keine Trainings", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Navy)
         Spacer(Modifier.size(8.dp))
         Text(
-            "Sobald du ein Training abschließt, wird es hier mit Datum und Uhrzeit gespeichert.",
+            "Sobald du ein Training abschließt, wird es hier mit Datum und Uhrzeit gespeichert. " +
+                "Hast du die App neu installiert? Dann lade unten deine Sicherungsdatei.",
             textAlign = TextAlign.Center,
         )
     }
