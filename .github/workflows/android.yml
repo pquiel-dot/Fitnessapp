@@ -25,14 +25,16 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             keystore="$RUNNER_TEMP/workout-release.p12"
-            # Beim Einfügen ins Secret entstandene Leerzeichen und Zeilenumbrüche entfernen.
-            if ! printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d > "$keystore"; then
+            # Beim Einfügen ins Secret entstandene Leerzeichen/Zeilenumbrüche entfernen und
+            # fehlende „=“-Füllzeichen am Ende ergänzen (werden beim Markieren oft nicht mitkopiert).
+            cleaned="$(printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n')"
+            while [ $(( ${#cleaned} % 4 )) -ne 0 ]; do cleaned="$cleaned="; done
+            if ! printf '%s' "$cleaned" | base64 -d > "$keystore"; then
               # Diagnose ohne den Inhalt preiszugeben: Länge, Prüfsumme und Zahl ungültiger Zeichen.
-              cleaned="$(printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n')"
               echo "Länge nach Bereinigung: ${#cleaned} Zeichen"
               echo "SHA-256: $(printf '%s' "$cleaned" | sha256sum | cut -c1-16)…"
               echo "Ungültige Zeichen: $(printf '%s' "$cleaned" | tr -d 'A-Za-z0-9+/=' | wc -c)"
-              echo "::error::SIGNING_KEYSTORE_BASE64 ist kein gültiges Base64. Bitte den Wert aus signatur-secrets.txt vollständig (eine Zeile) neu eintragen."
+              echo "::error::SIGNING_KEYSTORE_BASE64 ist kein gültiges Base64. Bitte den Wert aus SIGNING_KEYSTORE_BASE64.txt vollständig neu eintragen."
               exit 1
             fi
             if ! keytool -list -keystore "$keystore" -storetype PKCS12 -storepass "$KEYSTORE_PASSWORD" -alias workout > /dev/null; then
