@@ -48,6 +48,26 @@ vollständig durchlaufen wurden.
   (übersprungene Übungen zählen nicht). Die Übersicht zeigt Gesamtwerte pro Übung und lässt
   sich nach Datum, Dauer oder Anzahl Übungen sortieren; einzelne Einträge lassen sich löschen.
 - **Strava-Export**: Trainings auf Wunsch automatisch nach jedem Abschluss zu Strava hochladen (siehe unten)
+- **Sicherungsdatei**: Der Verlauf lässt sich zusätzlich in einer Datei auf dem Handy speichern, die
+  eine Neuinstallation der App übersteht (siehe unten)
+
+## Verlauf sichern und wiederherstellen
+
+Der Verlauf liegt im privaten App-Speicher und geht verloren, wenn die App deinstalliert wird – etwa
+weil sich eine neue APK-Version nicht über die alte installieren lässt. Deshalb kann er zusätzlich in
+einer frei wählbaren Datei auf dem Handy liegen:
+
+1. **Verlauf → Sicherungsdatei → Neue Sicherungsdatei anlegen** und einen Ordner wählen, der beim
+   Deinstallieren erhalten bleibt, z. B. „Download“ oder „Documents“
+   (Standardname `workout-begleiter-verlauf.txt`).
+2. Ab dann wird jedes neue oder gelöschte Training sofort auch in dieser Datei gespeichert.
+3. Nach der Installation einer neuen Version: **Verlauf → Vorhandene Datei laden** und die Datei
+   auswählen. Alle Trainings daraus werden übernommen (doppelte nur einmal), und die Datei wird
+   danach wieder automatisch weitergeführt.
+
+Die Datei ist eine einfache Textdatei (eine Zeile pro Training) und kann auch als Backup auf einen
+PC oder in die Cloud kopiert werden. Wird versehentlich eine fremde Datei gewählt, lehnt die App sie
+ab und verändert sie nicht.
 
 ## Strava-Export
 
