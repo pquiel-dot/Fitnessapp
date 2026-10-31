@@ -27,6 +27,11 @@ jobs:
             keystore="$RUNNER_TEMP/workout-release.p12"
             # Beim Einfügen ins Secret entstandene Leerzeichen und Zeilenumbrüche entfernen.
             if ! printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d > "$keystore"; then
+              # Diagnose ohne den Inhalt preiszugeben: Länge, Prüfsumme und Zahl ungültiger Zeichen.
+              cleaned="$(printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n')"
+              echo "Länge nach Bereinigung: ${#cleaned} Zeichen"
+              echo "SHA-256: $(printf '%s' "$cleaned" | sha256sum | cut -c1-16)…"
+              echo "Ungültige Zeichen: $(printf '%s' "$cleaned" | tr -d 'A-Za-z0-9+/=' | wc -c)"
               echo "::error::SIGNING_KEYSTORE_BASE64 ist kein gültiges Base64. Bitte den Wert aus signatur-secrets.txt vollständig (eine Zeile) neu eintragen."
               exit 1
             fi
