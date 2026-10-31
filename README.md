@@ -100,6 +100,23 @@ Jeder Push baut die App per GitHub Actions. Unter **Actions → Android Build �
 das Artefakt `WorkoutBegleiter-apk` herunterladen, entpacken und `app-debug.apk` auf dem
 Handy installieren (Installation aus unbekannten Quellen erlauben).
 
+### Fester Signaturschlüssel
+
+Damit sich jede neue APK als **Update** über die installierte Version installieren lässt (und der
+Verlauf im App-Speicher erhalten bleibt), signiert GitHub Actions die APK mit einem festen Schlüssel.
+Er liegt nicht im Repository, sondern in zwei Repository-Secrets
+(**Settings → Secrets and variables → Actions**):
+
+| Secret | Inhalt |
+| --- | --- |
+| `SIGNING_KEYSTORE_BASE64` | PKCS12-Keystore (Alias `workout`), Base64-kodiert in einer Zeile |
+| `SIGNING_KEYSTORE_PASSWORD` | Passwort von Keystore und Schlüssel |
+
+Fehlen die Secrets (z. B. bei Pull Requests aus Forks), wird mit dem wechselnden Debug-Schlüssel
+gebaut und der Lauf zeigt eine Warnung. Beim ersten Wechsel auf den festen Schlüssel muss die alte
+App einmalig deinstalliert werden – vorher den Verlauf in eine Sicherungsdatei schreiben (siehe oben).
+Den Keystore sicher aufbewahren: Ohne ihn sind künftig wieder nur Neuinstallationen möglich.
+
 ## Selbst bauen
 
 Mit Android Studio öffnen oder per Kommandozeile (JDK 17 + Android SDK nötig):
