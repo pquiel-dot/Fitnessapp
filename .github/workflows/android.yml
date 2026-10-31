@@ -21,10 +21,20 @@ jobs:
       - name: Signaturschlüssel bereitstellen
         env:
           KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/workout-release.p12"
-            echo "SIGNING_KEYSTORE_FILE=$RUNNER_TEMP/workout-release.p12" >> "$GITHUB_ENV"
+            keystore="$RUNNER_TEMP/workout-release.p12"
+            # Beim Einfügen ins Secret entstandene Leerzeichen und Zeilenumbrüche entfernen.
+            if ! printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d > "$keystore"; then
+              echo "::error::SIGNING_KEYSTORE_BASE64 ist kein gültiges Base64. Bitte den Wert aus signatur-secrets.txt vollständig (eine Zeile) neu eintragen."
+              exit 1
+            fi
+            if ! keytool -list -keystore "$keystore" -storetype PKCS12 -storepass "$KEYSTORE_PASSWORD" -alias workout > /dev/null; then
+              echo "::error::Keystore lässt sich nicht öffnen – Base64-Wert unvollständig oder SIGNING_KEYSTORE_PASSWORD falsch."
+              exit 1
+            fi
+            echo "SIGNING_KEYSTORE_FILE=$keystore" >> "$GITHUB_ENV"
             echo "APK wird mit dem festen Schlüssel signiert."
           else
             echo "::warning::Secret SIGNING_KEYSTORE_BASE64 fehlt – APK wird mit wechselndem Debug-Schlüssel signiert und lässt sich nicht als Update installieren."
